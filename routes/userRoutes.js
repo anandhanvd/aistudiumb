@@ -7,6 +7,8 @@ const {
   enrollUser,
   removeEnrollment,
   updateCompletionStatus,
+  approveTeacher,
+  getUnapprovedTeachers,
 } = require("../controllers/userController");
 const router = express.Router();
 
@@ -18,5 +20,7 @@ router.get("/getAllstudents", getAllUser);
 router.post("/enrollCourse", enrollUser);
 router.post("/removeEnroll", removeEnrollment);
 router.post("/updateStatus", updateCompletionStatus);
+router.post("/approveTeacher", approveTeacher);
+router.get("/unapprovedTeachers", getUnapprovedTeachers);
 
 module.exports = router;

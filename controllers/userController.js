@@ -3,7 +3,7 @@ const User = require("../models/userModel");
 // Register a new user
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
@@ -14,12 +14,17 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const user = new User({ name, email, password }); // NOTE: Hash password in a real-world app
+    const user = new User({
+      name,
+      email,
+      password,
+      role: role || "student",
+      isApproved: role === "teacher" ? false : true,
+    });
+
     await user.save();
 
-    res
-      .status(201)
-      .json({ message: "User registered successfully", user, success: true });
+    res.status(201).json({ message: "User registered successfully", user, success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -31,15 +36,16 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ email });
     if (!user || user.password !== password) {
-      // NOTE: Use hashed password comparison in real-world apps
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (user.role === "teacher" && !user.isApproved) {
+      return res.status(403).json({ message: "Teacher not approved" });
     }
 
     res.status(200).json({ message: "Login successful", user, success: true });
@@ -186,6 +192,37 @@ const removeEnrollment = async (req, res) => {
   }
 };
 
+const approveTeacher = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.role !== "teacher") {
+      return res.status(400).json({ message: "User is not a teacher" });
+    }
+
+    user.isApproved = true;
+    await user.save();
+
+    res.status(200).json({ message: "Teacher approved successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getUnapprovedTeachers = async (req, res) => {
+  try {
+    const teachers = await User.find({ role: "teacher", isApproved: false });
+    res.status(200).json({ teachers });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -194,4 +231,6 @@ module.exports = {
   removeEnrollment,
   enrollUser,
   updateCompletionStatus,
+  approveTeacher,
+  getUnapprovedTeachers,
 };
